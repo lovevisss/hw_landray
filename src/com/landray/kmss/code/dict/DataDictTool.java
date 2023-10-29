@@ -1,6 +1,7 @@
 package com.landray.kmss.code.dict;
 
 import com.landray.kmss.code.hbm.HbmClass;
+import com.landray.kmss.code.hbm.HbmMapping;
 import com.landray.kmss.code.spring.SpringBeans;
 import com.landray.kmss.code.struts.ActionMapping;
 import com.landray.kmss.code.struts.StrutsConfig;
@@ -189,6 +190,11 @@ public abstract class DataDictTool {
     }
 
     private void loadHbmXml(File file) {
+        HbmMapping mapping = (HbmMapping) XMLReaderUtil.getInstance(file, HbmMapping.class);
+        for (int i=0; i < mapping.getClasses().size(); i++) {
+            HbmClass hbm = (HbmClass) mapping.getClasses().get(i);
+            hbmClasses.put(hbm.getName(), hbm);
+        }
     }
 
     private void loadStrutsXml(File file) {
