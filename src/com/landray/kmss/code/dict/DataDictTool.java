@@ -1,11 +1,14 @@
 package com.landray.kmss.code.dict;
 
+import com.landray.kmss.code.fix.FixContext;
 import com.landray.kmss.code.hbm.HbmClass;
 import com.landray.kmss.code.hbm.HbmMapping;
+import com.landray.kmss.code.hbm.HbmSubClass;
 import com.landray.kmss.code.spring.SpringBeans;
 import com.landray.kmss.code.struts.ActionMapping;
 import com.landray.kmss.code.struts.StrutsConfig;
 import com.landray.kmss.code.util.XMLReaderUtil;
+import com.landray.kmss.sys.config.dict.util.XmlJsonDictType;
 import net.sf.json.JSONObject;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -209,5 +212,155 @@ public abstract class DataDictTool {
         for (SpringBeans bean : beans.getBeans()) {
             springBeans.add(bean.getId());
         }
+    }
+
+    /** 修复数据字典 */
+    boolean fixDict(JSONObject json, File file,  boolean logFix){
+        String modelName = null;
+        JSONObject global = json.optJSONObject("global");
+        if(global != null){
+            /** optString() 是一种用于从 JSON 对象中获取字符串值的方法。
+             *
+             相较于getString()，optString() 会在获取不到值的时候返回一个空字符串（""）。 而getString() 会在获取不到值的时候抛出异常。
+             */
+            modelName = global.optString("modelName"); //如果进入到这里  至少会返回“”  但是不会返回null
+        }
+        if(modelName == null){
+            logDetail("错误：无法读取modelName信息：" + file.getPath());
+            return false;
+        }
+
+        JSONObject baseAtts = "com.landray.kmss.sys.doc.model.SysDocBaseInfo".equals(global.optString("extendClass")) ? docBaseAttrs : null;
+
+        FixContext ctx = new FixContext(file, modelName, logFix);
+//修复model 数据
+        fixMessage(ctx, global, null);
+        fixModelHbmAttr(ctx, global);
+        fixModelOtherAttr(ctx, global);
+/**
+ * 修复字段数据
+ * getJSONObject() 方法在属性不存在或者属性类型不匹配时会抛出异常，
+ * 而 optJSONObject() 方法则提供了更灵活的处理方式，可以在遇到异常情况时返回一个默认值（null）。
+ */
+        JSONObject attrs = json.optJSONObject("attrs");
+        if(attrs == null){
+            attrs = new JSONObject();
+            json.put("attrs", attrs);
+            attrs = json.getJSONObject("attrs");
+        }
+
+        List<String> properties = new ArrayList<String>();
+        Iterator keys =attrs.keys();
+        while (keys.hasNext()){
+            properties.add(keys.next().toString());
+        }
+//数据字典中的字段
+        if(baseAtts != null){
+            keys = baseAtts.keys();
+            while (keys.hasNext()){
+                String key = keys.next().toString();
+                if(!properties.contains(key)){
+                    properties.add(key);
+                }
+            }
+        }
+
+//        根据HBM修复
+        if(ctx.getHbm() != null){
+            fixHbmClass(ctx, attrs, baseAtts, ctx.getHbm(), properties, true);
+            if(ctx.getHbm() instanceof HbmSubClass){
+                HbmSubClass hbm = (HbmSubClass) ctx.getHbm();
+                if(hbm.getJoin() != null){
+                    fixHbmClass(ctx, attrs, baseAtts, hbm.getJoin(), properties, true);
+                }
+                HbmClass extClass = hbmClasses.get(hbm.getExtendClass());
+                if(extClass != null){
+                    fixHbmClass(ctx, attrs, baseAtts, extClass, properties, false);
+                }
+            }
+        }
+
+        JSONObject attachments = json.optJSONObject("attachments");
+        if(attachments == null){
+            attachments = new JSONObject();
+            json.put("attachments", attachments);
+            attachments = json.getJSONObject("attachments");
+        } else {
+            /**
+             *
+             * keySet() 返回一个包含映射中所有键的 Set 集合，可以直接使用集合的方法来操作键。
+             * keys() 返回一个枚举对象，需要使用枚举的方式来遍历键。
+             */
+            for (Object key: attachments.keySet()){
+                JSONObject jsonProperty = attachments.getJSONObject(key.toString());
+                replaceFix(ctx, jsonProperty, "propertyType", XmlJsonDictType.ATTACHMENT.getJsonName(),key.toString());
+                fixMessage(ctx, global, key.toString());
+            }
+        }
+
+        for(String property: properties){
+            JSONObject jsonProperty = attrs.optJSONObject(property);
+            if(jsonProperty != null) {
+                String propertyType = jsonProperty.optString("propertyType");
+                if(XmlJsonDictType.ATTACHMENT.getJsonName().equals(propertyType)){
+//                    附件修复
+                    fixMessage(ctx, jsonProperty, property);
+                    attachments.put(property, jsonProperty);
+                    attrs.remove(property);
+                    ctx.setModify(true);
+                    continue;
+                }
+                if(XmlJsonDictType.COMPLEX.getJsonName().equals(propertyType)){
+//                    复合属性
+                    fixMessage(ctx, jsonProperty, property);
+                    fixPropertyType(ctx, jsonProperty, propertyType, null);
+                    continue;
+                }
+                if(ctx.getHbm() == null || ctx.getHbm().getId() == null){
+//                    无HBM
+                    if(checkField(ctx.clazz, property) >= 0){
+                        fixMessage(ctx, jsonProperty, property);
+                        fixPropertyType(ctx, jsonProperty, propertyType, null);
+                        continue;
+                    }
+                }
+                ctx.setModify(true);
+                attrs.remove(property);
+                ctx.log("删除:" + property);
+            }
+//           上面对已经处理的属性做了删除，如果有基础属性中没有的属性，就会进入到这里
+            if(baseAtts != null && baseAtts.containsKey(property)){
+                ctx.log("错误:" + property + "属性在hbm.xml中未定义（继承SysDocBaseInfo的model必须拥有所有的字段）");
+            }
+        }
+        if(attachments.isEmpty()){
+            json.remove("attachments");
+        }
+        return ctx.isModify();
+    }
+
+    private int checkField(Class<?> clazz, String property) {
+        return 0;
+    }
+
+    private void fixPropertyType(FixContext ctx, JSONObject jsonProperty, String propertyType, Object o) {
+    }
+
+    private void replaceFix(FixContext ctx, JSONObject jsonProperty, String propertyType, String jsonName, String string) {
+    }
+
+    private void fixHbmClass(FixContext ctx, JSONObject attrs, JSONObject baseAtts, HbmClass hbm, List<String> properties, boolean addProperty) {
+    }
+
+    private void fixModelOtherAttr(FixContext ctx, JSONObject global) {
+    }
+
+    private void fixModelHbmAttr(FixContext ctx, JSONObject global) {
+    }
+
+    private void fixMessage(FixContext ctx, JSONObject global, Object o) {
+    }
+
+    private void logDetail(String s) {
     }
 }

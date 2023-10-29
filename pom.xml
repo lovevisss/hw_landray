@@ -41,6 +41,18 @@
             <version>4.13.1</version>
 <!--            <scope>test</scope>-->
         </dependency>
+<!--        kmss core-->
+        <dependency>
+            <groupId>com.landray.kmss</groupId>
+            <artifactId>kmss_core</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.10</version>
+            <scope>compile</scope>
+        </dependency>
 
     </dependencies>
 
