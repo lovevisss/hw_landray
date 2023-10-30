@@ -4,9 +4,11 @@ import com.landray.kmss.code.fix.FixContext;
 import com.landray.kmss.code.hbm.HbmClass;
 import com.landray.kmss.code.hbm.HbmMapping;
 import com.landray.kmss.code.hbm.HbmSubClass;
+import com.landray.kmss.code.spring.SpringBean;
 import com.landray.kmss.code.spring.SpringBeans;
 import com.landray.kmss.code.struts.ActionMapping;
 import com.landray.kmss.code.struts.StrutsConfig;
+import com.landray.kmss.util.StringUtil;
 import com.landray.kmss.code.util.XMLReaderUtil;
 import com.landray.kmss.sys.config.dict.util.XmlJsonDictType;
 import net.sf.json.JSONObject;
@@ -209,7 +211,7 @@ public abstract class DataDictTool {
 
     private void loadSpringXml(File file) {
         SpringBeans beans = (SpringBeans) XMLReaderUtil.getInstance(file, SpringBeans.class);
-        for (SpringBeans bean : beans.getBeans()) {
+        for (SpringBean bean : beans.getBeans()) {
             springBeans.add(bean.getId());
         }
     }
@@ -339,6 +341,75 @@ public abstract class DataDictTool {
         return ctx.isModify();
     }
 
+    /** 修复messageKey */
+    private void fixMessage(FixContext ctx, JSONObject json, String fieldName) {
+        String oldKey = json.optString("messageKey");
+        if(StringUtil.isNotNull(oldKey)){  //包含是否为null 和空字符串的情况
+            int index = oldKey.indexOf(":");  //获取格式"sys-doc:sysDocBaseInfo.docSubject"
+            String bundle = "ApplicationResources";
+            String key = oldKey;
+            if(index > -1){
+                bundle = "com.landray.kmss." + oldKey.substring(0,index).replace("-", ".").trim() + ".ApplicationResources"; // com.landray.kmss.sys.doc
+                key = oldKey.substring(index +1).trim(); // sysDocBaseInfo.docSubject
+            }
+            try {
+                /**
+                 * 获取对应资源文件 ApplicationResources.properties 中的值  查找是否存在key
+                 */
+                if(ResourceBundle.getBundle(bundle).containsKey(key)){
+                    fixCanDisplay(ctx, json, fieldName, false);
+                    return;
+                }
+            }catch (MissingResourceException e){
+                ctx.log("错误：无法找到资源文件：" + bundle);
+            }
+        }
+
+//        语言包
+        if(ctx.getResource() != null){
+            if(fieldName == null){
+                String newKey = "table." + ctx.getSimpleName();
+                if(ctx.getResource().containsKey(newKey)){
+                    newKey = ctx.getBundle() + ":" + newKey;
+                    json.put("messageKey", newKey);
+                    ctx.logFix("model.messageKey", oldKey, newKey);
+                    return;
+                }
+            } else {
+                String newKey = ctx.getSimpleName() + "." + fieldName;
+                if(ctx.getResource().containsKey(newKey)){
+                    newKey = ctx.getBundle() + ":" + newKey;
+                }else if(ctx.getResource().containsKey(newKey + "Id")){
+                    newKey = ctx.getBundle() + ":" + newKey + "Id";
+                }else if(ctx.getResource().containsKey(newKey + "Name")){
+                    newKey = ctx.getBundle() + ":" + newKey + "Name";
+                }else{
+                    newKey = MESSAGE_KEYS.get(fieldName);
+                }
+                if(newKey != null){
+                    json.put("messageKey", newKey);
+                    ctx.logFix(fieldName + ".messageKey", oldKey, newKey);
+                    fixCanDisplay(ctx, json, fieldName, false);
+                    return;
+                }
+            }
+        }
+        fixCanDisplay(ctx, json, fieldName, true);
+//        读取不了打印错误
+        if(StringUtil.isNull(oldKey)){
+            if( LOG_WARN && fieldName == null){
+                ctx.log("警告：messageKey为空");
+            } else if(LOG_WARN && !"fdId".equals(fieldName) && !"false".equals(json.optString("canDisplay"))){
+                ctx.log("警告：" + fieldName + ".messageKey为空");
+            }
+        } else{
+            ctx.log("错误：" + (fieldName == null ? "model":fieldName) + ".messageKey" + oldKey);
+        }
+    }
+
+    private void fixCanDisplay(FixContext ctx, JSONObject json, String fieldName, boolean b) {
+    }
+
     private int checkField(Class<?> clazz, String property) {
         return 0;
     }
@@ -358,8 +429,7 @@ public abstract class DataDictTool {
     private void fixModelHbmAttr(FixContext ctx, JSONObject global) {
     }
 
-    private void fixMessage(FixContext ctx, JSONObject global, Object o) {
-    }
+
 
     private void logDetail(String s) {
     }

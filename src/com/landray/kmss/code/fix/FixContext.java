@@ -4,6 +4,8 @@ import com.landray.kmss.code.hbm.HbmClass;
 import lombok.Data;
 
 import java.io.File;
+import java.util.ResourceBundle;
+
 @Data
 public class FixContext {
     File file;
@@ -12,6 +14,7 @@ public class FixContext {
     public boolean modify;
     public Class<?> clazz;
     private HbmClass hbm;
+    private ResourceBundle resource;
 
     public HbmClass getHbm() {
         return hbm;
@@ -33,5 +36,8 @@ public class FixContext {
     }
 
     public void log(String s) {
+    }
+
+    public void logFix(String s, String oldKey, String newKey) {
     }
 }
