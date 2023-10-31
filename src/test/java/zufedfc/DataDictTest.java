@@ -11,4 +11,9 @@ public class DataDictTest{
        dataDictCreateTool.testPrepare("sys/news");
        System.out.println("hello");
     }
+
+    public void testScan(){
+
+    }
+
 }

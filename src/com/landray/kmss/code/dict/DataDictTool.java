@@ -15,7 +15,10 @@ import net.sf.json.JSONObject;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xml.sax.SAXException;
 
+import javax.xml.bind.JAXBException;
+import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
@@ -158,7 +161,7 @@ public abstract class DataDictTool {
      * @param dir
      * @param isConfig
      */
-    private void scan(File dir, boolean isConfig) {
+    private void scan(File dir, boolean isConfig) throws ParserConfigurationException, SAXException,IOException {
         if (!dir.exists() || !dir.isFile()) {
             return;
         }
@@ -194,7 +197,7 @@ public abstract class DataDictTool {
         }
     }
 
-    private void loadHbmXml(File file) {
+    private void loadHbmXml(File file) throws ParserConfigurationException, SAXException, IOException {
         HbmMapping mapping = (HbmMapping) XMLReaderUtil.getInstance(file, HbmMapping.class);
         for (int i=0; i < mapping.getClasses().size(); i++) {
             HbmClass hbm = (HbmClass) mapping.getClasses().get(i);
@@ -202,14 +205,14 @@ public abstract class DataDictTool {
         }
     }
 
-    private void loadStrutsXml(File file) {
+    private void loadStrutsXml(File file) throws ParserConfigurationException, SAXException, IOException {
         StrutsConfig config = (StrutsConfig) XMLReaderUtil.getInstance(file, StrutsConfig.class);
         for(ActionMapping action : config.getActionMappings()){
             strutsPaths.add(action.getPath());
         }
     }
 
-    private void loadSpringXml(File file) {
+    private void loadSpringXml(File file) throws ParserConfigurationException, SAXException,  IOException {
         SpringBeans beans = (SpringBeans) XMLReaderUtil.getInstance(file, SpringBeans.class);
         for (SpringBean bean : beans.getBeans()) {
             springBeans.add(bean.getId());
@@ -223,7 +226,7 @@ public abstract class DataDictTool {
         if(global != null){
             /** optString() 是一种用于从 JSON 对象中获取字符串值的方法。
              *
-             相较于getString()，optString() 会在获取不到值的时候返回一个空字符串（""）。 而getString() 会在获取不到值的时候抛出异常。
+             * 相较于getString()，optString() 会在获取不到值的时候返回一个空字符串（""）。 而getString() 会在获取不到值的时候抛出异常。
              */
             modelName = global.optString("modelName"); //如果进入到这里  至少会返回“”  但是不会返回null
         }
