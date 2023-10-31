@@ -1,6 +1,7 @@
 package com.landray.kmss.code.spring;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.landray.kmss.code.struts.StrutsConfig;
 import com.landray.kmss.code.util.XMLReaderUtil;
 import lombok.Data;
@@ -14,6 +15,7 @@ import java.util.List;
 
 @Data
 @XmlRootElement
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class SpringBeans {
 
     private static Logger logger = LoggerFactory.getLogger(SpringBeans.class);
