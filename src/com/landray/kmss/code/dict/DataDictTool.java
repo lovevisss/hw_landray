@@ -410,7 +410,69 @@ public abstract class DataDictTool {
         }
     }
 
-    private void fixCanDisplay(FixContext ctx, JSONObject json, String fieldName, boolean b) {
+    private void fixCanDisplay(FixContext ctx, JSONObject json, String fieldName, boolean checkMore) {
+        String propertyType = json.optString("propertyType");
+        if(fieldName == null || StringUtil.isNotNull(json.optString("canDisplay")) || XmlJsonDictType.ATTACHMENT.getJsonName().equals(propertyType)){
+            return;
+        }
+
+        if(HIDDEN_FIELDS.contains(fieldName)){
+            defaultFix(ctx, json, "canDisplay", "false", fieldName);
+            return;
+        }
+        if(!checkMore){
+            return;
+        }
+        if(MORE_HIDDEN_FIELDS.contains(fieldName)){
+            defaultFix(ctx, json, "canDisplay", "false", fieldName);
+            return;
+        }
+//        若在form中没有出现，则归于隐藏字段
+        if(ctx.clazz == null || !XmlJsonDictType.SIMPLE.getJsonName().equals(propertyType)){
+            return;
+        }
+
+        String formName = StringUtil.replace(ctx.clazz.getName(), ".model.", ".form.") + "Form";
+        Class<?> formClazz = loadClass(formName);
+        if(checkField(formClazz, fieldName) == -1){
+            defaultFix(ctx, json, "canDisplay", "false", fieldName);
+        }
+    }
+
+    private void fixModelHbmAttr(FixContext ctx, JSONObject global) {
+        if(ctx.getHbm() == null){
+            return;
+        }
+        if(ctx.getHbm() instanceof HbmSubClass){
+            /*
+            * 继承关系， 子类没定义表 则用父类
+            * */
+            HbmSubClass hbm = (HbmSubClass) ctx.getHbm();
+            String table = null;
+            if(hbm.getJoin() != null){
+                table = hbm.getJoin().getTable();
+            } else {
+                HbmClass sup = hbmClasses.get(hbm.getExtendClass());
+                if(sup != null){
+                    table = sup.getTable();
+                }
+            }
+
+            replaceFix(ctx, global, "table", table, "model");
+            defaultFix(ctx, global, "etendClass", hbm.getExtendClass(), "model");
+            replaceFix(ctx, global, "discriminatorValue", hbm.getDiscriminatorValue(), "model");
+
+        }else{
+            replaceFix(ctx, global, "table", ctx.getHbm().getTable(), "model");
+            replaceFix(ctx, global, "discriminatorValue", null, "model");
+        }
+    }
+
+    private Class<?> loadClass(String formName) {
+        return null;
+    }
+
+    private void defaultFix(FixContext ctx, JSONObject json, String canDisplay, String aFalse, String fieldName) {
     }
 
     private int checkField(Class<?> clazz, String property) {
@@ -426,11 +488,37 @@ public abstract class DataDictTool {
     private void fixHbmClass(FixContext ctx, JSONObject attrs, JSONObject baseAtts, HbmClass hbm, List<String> properties, boolean addProperty) {
     }
 
-    private void fixModelOtherAttr(FixContext ctx, JSONObject global) {
+    private void fixModelOtherAttr(FixContext ctx, JSONObject json) {
+//        修复displayProperty
+        if(ctx.clazz != null){ //按顺序找到第一个不为空的值
+            String displayPropery = null;
+            String[] opts = { json.optString("displayProperty"), json.optString("fdName"), json.optString("docSubject") };
+            for (String opt : opts) {
+                 if(StringUtil.isNull(opt)){
+                     continue;
+                 }
+
+                if(checkField(ctx.clazz, opt) >= 0){
+                    displayPropery = opt;
+                    break;
+                }
+
+            }
+            replaceFix(ctx, json, "displayProperty", displayPropery, "model");
+        }
+//        修复serviceBean
+        String bean = json.optString("serviceBean");
+        if (StringUtil.isNull(bean) || !springBeans.contains(bean)) {
+            bean = ctx.getSimpleName() + "Service";
+            if(!springBeans.contains(bean)){
+                bean = null;
+            }
+        }
+
+        replaceFix(ctx, json, "serviceBean", bean, "model");
     }
 
-    private void fixModelHbmAttr(FixContext ctx, JSONObject global) {
-    }
+
 
 
 
