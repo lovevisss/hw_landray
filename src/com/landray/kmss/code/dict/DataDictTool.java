@@ -8,6 +8,7 @@ import com.landray.kmss.code.spring.SpringBean;
 import com.landray.kmss.code.spring.SpringBeans;
 import com.landray.kmss.code.struts.ActionMapping;
 import com.landray.kmss.code.struts.StrutsConfig;
+import com.landray.kmss.util.ObjectUtil;
 import com.landray.kmss.util.StringUtil;
 import com.landray.kmss.code.util.XMLReaderUtil;
 import com.landray.kmss.sys.config.dict.util.XmlJsonDictType;
@@ -19,6 +20,7 @@ import org.xml.sax.SAXException;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.parsers.ParserConfigurationException;
+import java.beans.PropertyDescriptor;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
@@ -479,7 +481,23 @@ public abstract class DataDictTool {
         return 0;
     }
 
-    private void fixPropertyType(FixContext ctx, JSONObject jsonProperty, String propertyType, Object o) {
+    private void fixPropertyType(FixContext ctx, JSONObject json, String name, String type) {
+        String oldVal = json.optString("type");
+        String newVal = getPropertyType(type);
+        if(newVal == null && ctx.getClazz() != null){
+            PropertyDescriptor descriptor = ObjectUtil.getPropertyDescriptor(ctx.getClazz(), name);
+            if(descriptor != null){
+                newVal = getPropertyType(descriptor.getPropertyType().getName());
+            }
+        }
+        if(newVal == null || "DateTime".equals(newVal) && "Date".equals(oldVal) || "Time".equals(oldVal) ){
+            return;
+        }
+        replaceFix(ctx, json, "type", newVal, name);
+    }
+
+    private String getPropertyType(String type) {
+        return null;
     }
 
     private void replaceFix(FixContext ctx, JSONObject jsonProperty, String propertyType, String jsonName, String string) {
@@ -516,6 +534,24 @@ public abstract class DataDictTool {
         }
 
         replaceFix(ctx, json, "serviceBean", bean, "model");
+//        修复URL
+        String url = json.optString("url");
+        if(ctx.getBundle() != null && StringUtil.isNull(url)){
+            url = "/" + ctx.getBundle().replace('-','/') + "/";  ///hr/ratify/hr_ratify_feedback/hrRatifyFeedback.do?method=view&fdId=${fdId}
+            for(int i=0; i < ctx.getSimpleName().length(); i++){
+                char c = ctx.getSimpleName().charAt(i);
+                if(Character.isUpperCase(c)){
+                    url += "_" + Character.toLowerCase(c);
+                }else{
+                    url += c;
+                }
+            }
+
+            url += "/" + ctx.getSimpleName();
+            if(strutsPaths.contains(url)){
+                defaultFix(ctx,json, "url", url + ".do?method=view&fdId=${fdId}", "model");
+            }
+        }
     }
 
 
