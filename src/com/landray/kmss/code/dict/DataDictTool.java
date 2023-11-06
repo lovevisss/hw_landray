@@ -12,6 +12,7 @@ import com.landray.kmss.util.ObjectUtil;
 import com.landray.kmss.util.StringUtil;
 import com.landray.kmss.code.util.XMLReaderUtil;
 import com.landray.kmss.sys.config.dict.util.XmlJsonDictType;
+import lombok.Data;
 import net.sf.json.JSONObject;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -25,6 +26,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
+@Data
 public abstract class DataDictTool {
     static String LOG_FILE; //静态变量  类型为String  用于存储日志文件  所有示例共享同一个值
 
@@ -123,6 +125,8 @@ public abstract class DataDictTool {
 
     JSONObject docBaseAttrs;
 
+    String _path;
+
     /**
      * 准备数据字典工具
      *
@@ -130,7 +134,7 @@ public abstract class DataDictTool {
      * @throws Exception 获取SysDocBaseInfo.json 下面的attrs属性
      */
     void prepare(String path) throws Exception {
-        String _path = path == null ? "" : "/" + path;
+        _path = path == null ? "" : "/" + path;
         scan(new File("src/com/landray/kmss" + _path), false); //扫描文件
         scan(new File("WebContent/WEB-INF/KmssConfig" + _path), true); //扫描配置文件
 
@@ -163,8 +167,8 @@ public abstract class DataDictTool {
      * @param dir
      * @param isConfig
      */
-    private void scan(File dir, boolean isConfig) throws ParserConfigurationException, SAXException,IOException {
-        if (!dir.exists() || !dir.isFile()) {
+    public void scan(File dir, boolean isConfig) throws ParserConfigurationException, SAXException,IOException {
+        if (!dir.exists() || dir.isFile()) {
             return;
         }
 
@@ -187,7 +191,7 @@ public abstract class DataDictTool {
                         loadStrutsXml(file);
                     } else if ("data-dict".equals(dir.getName())) {
                         if (fileName.endsWith(".xml") || fileName.endsWith(".json")) {
-                            dictFiles.add(file);
+                            dictFiles.add(file);  //添加到数据字典文件列表中
                         }
                     }
                 }else {
