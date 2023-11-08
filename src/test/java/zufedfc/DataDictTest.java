@@ -36,8 +36,13 @@ public class DataDictTest{
 
         dataDictCreateTool.scan(dir, false);
         assert(dataDictCreateTool.getDictFiles().size() == 0);
+        System.out.println(dataDictCreateTool.getSpringBeans().size());
         dataDictCreateTool.scan(dir,true);
         assert(dataDictCreateTool.getDictFiles().size() == 6);
+//test if struts is null
+        File file_all = new File("C:\\javaKF\\eclipseProject\\workspaceJXNew\\SPRJ20221027_JX\\trunk\\WebContent\\WEB-INF\\KmssConfig");
+        dataDictCreateTool.scan(file_all, true);
+        assert(dataDictCreateTool.getStrutsPaths().size() ==0);
 
     }
 

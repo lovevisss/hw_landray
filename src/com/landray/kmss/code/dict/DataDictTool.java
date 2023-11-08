@@ -167,7 +167,7 @@ public abstract class DataDictTool {
      * @param dir
      * @param isConfig
      */
-    public void scan(File dir, boolean isConfig) throws ParserConfigurationException, SAXException,IOException {
+    public void scan(File dir, boolean isConfig) throws Exception {
         if (!dir.exists() || dir.isFile()) {
             return;
         }
@@ -186,44 +186,36 @@ public abstract class DataDictTool {
             } else {
                 if (isConfig) {
                     if ("spring.xml".equals(fileName)) {
-                        loadSpringXml(file);
-                    } else if("struts.xml".equals(fileName)){ // 目前这个文件好像已经被spring-mvc.xml替代了
-                        loadStrutsXml(file);
-                    } else if ("data-dict".equals(dir.getName())) {
+//                        loadSpringXml(file);
+                        loadXml(file, SpringBeans.class);
+                    }  else if ("data-dict".equals(dir.getName())) {
                         if (fileName.endsWith(".xml") || fileName.endsWith(".json")) {
                             dictFiles.add(file);  //添加到数据字典文件列表中
                         }
                     }
                 }else {
                     if (fileName.endsWith(".hbm.xml")) {
-                        loadHbmXml(file);
+//                        loadHbmXml(file);
+                        loadXml(file, HbmMapping.class);
                     }
                 }
             }
         }
     }
 
-    private void loadHbmXml(File file) throws ParserConfigurationException, SAXException, IOException {
-        HbmMapping mapping = (HbmMapping) XMLReaderUtil.getInstance(file, HbmMapping.class);
-        for (int i=0; i < mapping.getClasses().size(); i++) {
-            HbmClass hbm = (HbmClass) mapping.getClasses().get(i);
-            hbmClasses.put(hbm.getName(), hbm);
+    private <T> void loadXml(File file, Class<T> clazz) throws Exception{
+        T obj = (T) XMLReaderUtil.getInstance(file, clazz);
+        if(clazz == HbmMapping.class){
+            hbmClasses = ((HbmMapping)obj).getList();
+        } else if (clazz == SpringBeans.class) {
+            for (SpringBean bean : ((SpringBeans)obj).getBeans()) {
+                springBeans.add(bean.getId());
+            }
         }
+
     }
 
-    private void loadStrutsXml(File file) throws ParserConfigurationException, SAXException, IOException {
-        StrutsConfig config = (StrutsConfig) XMLReaderUtil.getInstance(file, StrutsConfig.class);
-        for(ActionMapping action : config.getActionMappings()){
-            strutsPaths.add(action.getPath());
-        }
-    }
 
-    private void loadSpringXml(File file) throws ParserConfigurationException, SAXException,  IOException {
-        SpringBeans beans = (SpringBeans) XMLReaderUtil.getInstance(file, SpringBeans.class);
-        for (SpringBean bean : beans.getBeans()) {
-            springBeans.add(bean.getId());
-        }
-    }
 
     /** 修复数据字典 */
     boolean fixDict(JSONObject json, File file,  boolean logFix){

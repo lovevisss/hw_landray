@@ -6,6 +6,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 public class HbmMapping {
 
@@ -14,8 +15,24 @@ public class HbmMapping {
     }
 
     private List classes = new ArrayList();
+    private Map<String, HbmClass> hbmClasses;
     public List getClasses() {
         return classes;
+    }
+
+    public Map<String, HbmClass> getList(){
+        if(hbmClasses.isEmpty())
+        {
+            initHbmClass();
+        }
+        return hbmClasses;
+    }
+
+    public void  initHbmClass(){
+        for (int i=0; i < this.getClasses().size(); i++) {
+            HbmClass hbm = (HbmClass) this.getClasses().get(i);
+            hbmClasses.put(hbm.getName(), hbm);
+        }
     }
 
     public void addClass(HbmClass hbmClass) {
