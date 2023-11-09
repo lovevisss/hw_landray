@@ -1,9 +1,7 @@
 package com.landray.kmss.code.dict;
 
 import com.landray.kmss.code.fix.FixContext;
-import com.landray.kmss.code.hbm.HbmClass;
-import com.landray.kmss.code.hbm.HbmMapping;
-import com.landray.kmss.code.hbm.HbmSubClass;
+import com.landray.kmss.code.hbm.*;
 import com.landray.kmss.code.spring.SpringBean;
 import com.landray.kmss.code.spring.SpringBeans;
 import com.landray.kmss.code.struts.ActionMapping;
@@ -493,13 +491,96 @@ public abstract class DataDictTool {
     }
 
     private String getPropertyType(String type) {
-        return null;
+        if(StringUtil.isNull(type)){
+            return null;
+        }
+        if("com.landray.kmss.common.dao.ClobStringType".equals(type)){
+            return "RTF";
+        }
+        if(type.startsWith("com.landray.kmss.")){
+            return type;
+        }
+
+        String shortType = type.toLowerCase();
+        int i = type.lastIndexOf(".");
+        if(i > -1){
+            shortType = type.substring(i + 1).toLowerCase();
+        }
+        return TYPES.get(shortType);
     }
 
     private void replaceFix(FixContext ctx, JSONObject jsonProperty, String propertyType, String jsonName, String string) {
     }
 
     private void fixHbmClass(FixContext ctx, JSONObject attrs, JSONObject baseAtts, HbmClass hbm, List<String> properties, boolean addProperty) {
+        boolean logFix = ctx.isLogFix();
+        List<NamingProperty> hbmProperties = hbm.getProperties();
+        if(hbmProperties != null){
+            for (NamingProperty obj : hbmProperties) {
+                String name = obj.getName();
+                properties.remove(name);
+//               创建字段
+                JSONObject jsonProperty;
+                if(attrs.containsKey(name)){
+                    ctx.setLogFix(logFix);
+                } else if (addProperty) {
+                    jsonProperty = new JSONObject();
+                    attrs.put(name, jsonProperty);
+                    ctx.setLogFix(false);
+                    ctx.setModify(true);
+                    if(logFix){
+                        ctx.log("添加:" + name);
+                    }
+                } else {
+                    continue;
+                }
+//                初始化字段信息
+                jsonProperty = attrs.getJSONObject(name);
+                if(!"fdId".equals(name) && baseAtts != null && baseAtts.containsKey(name)){
+                    JSONObject baseProperty = baseAtts.getJSONObject(name);
+                    for(Object key: baseProperty.keySet()){
+                        defaultFix(ctx, jsonProperty, key.toString(), baseProperty.optString(key.toString()), name);
+                    }
+
+                }
+
+                switch (obj.getClass().getSimpleName()){
+                    case "HbmId":
+                        fixHbmId(ctx, jsonProperty, (HbmId)obj);
+                        break;
+                    case "HbmProperty":
+                        fixHbmProperty(ctx, jsonProperty, (HbmProperty)obj);
+                        break;
+                    case "HbmOneToOne":
+                        fixHbmOneToOne(ctx, jsonProperty, (HbmOneToOne)obj);
+                        break;
+                    case "HbmManyToOne":
+                        fixHbmManyToOne(ctx, jsonProperty, (HbmManyToOne)obj);
+                        break;
+                    case "HbmBag":
+                        fixHbmBag(ctx, jsonProperty, (HbmBag)obj);
+                        break;
+
+                }
+            }
+            ctx.setLogFix(logFix);
+        }
+
+    }
+
+    private void fixHbmBag(FixContext ctx, JSONObject jsonProperty, HbmBag obj) {
+    }
+
+    private void fixHbmManyToOne(FixContext ctx, JSONObject jsonProperty, HbmManyToOne obj) {
+    }
+
+    private void fixHbmOneToOne(FixContext ctx, JSONObject jsonProperty, HbmOneToOne obj) {
+    }
+
+    private void fixHbmProperty(FixContext ctx, JSONObject jsonProperty, HbmProperty obj) {
+    }
+
+    private void fixHbmId(FixContext ctx, JSONObject jsonProperty, NamingProperty obj) {
     }
 
     private void fixModelOtherAttr(FixContext ctx, JSONObject json) {

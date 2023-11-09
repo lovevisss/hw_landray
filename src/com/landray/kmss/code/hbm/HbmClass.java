@@ -14,7 +14,7 @@ public class HbmClass {
     private HbmId id;
     private String name;
     private String table;
-    private List<Object> properties = new ArrayList<>();
+    private List<NamingProperty> properties = new ArrayList<>();
     private List<Object> subclasses = new ArrayList<>();
 
     public void setId(HbmId id) {

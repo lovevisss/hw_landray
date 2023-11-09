@@ -66,10 +66,11 @@
             <version>2.12.5</version>
         </dependency>
 <!--        spring core-->
-
-
-
-
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-core</artifactId>
+            <version>5.3.9</version>
+        </dependency>
 
     </dependencies>
 

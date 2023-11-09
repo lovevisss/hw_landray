@@ -14,6 +14,8 @@ public class FixContext {
     public boolean modify;
     public Class<?> clazz;
     private HbmClass hbm;
+
+    boolean logFix;
     private ResourceBundle resource;
 
     public HbmClass getHbm() {
