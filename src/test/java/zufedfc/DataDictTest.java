@@ -22,7 +22,7 @@ public class DataDictTest{
     }
 
     @Test
-    public void testScan() throws ParserConfigurationException, IOException, SAXException { //传入的必须是一个目录，如果是文件不会单独解析
+    public void testScan() throws Exception { //传入的必须是一个目录，如果是文件不会单独解析
         DataDictCreateTool dataDictCreateTool = new DataDictCreateTool();
         File none_dir = new File("test");
         assert(!none_dir.exists());
@@ -48,6 +48,7 @@ public class DataDictTest{
 
     @Test
     public void testgetPropertyType(){
+
     }
 
 }

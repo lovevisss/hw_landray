@@ -4,8 +4,7 @@ import com.landray.kmss.code.fix.FixContext;
 import com.landray.kmss.code.hbm.*;
 import com.landray.kmss.code.spring.SpringBean;
 import com.landray.kmss.code.spring.SpringBeans;
-import com.landray.kmss.code.struts.ActionMapping;
-import com.landray.kmss.code.struts.StrutsConfig;
+import com.landray.kmss.util.ClassUtils;
 import com.landray.kmss.util.ObjectUtil;
 import com.landray.kmss.util.StringUtil;
 import com.landray.kmss.code.util.XMLReaderUtil;
@@ -15,20 +14,19 @@ import net.sf.json.JSONObject;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xml.sax.SAXException;
 
-import javax.xml.bind.JAXBException;
-import javax.xml.parsers.ParserConfigurationException;
 import java.beans.PropertyDescriptor;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
+
+
 @Data
 public abstract class DataDictTool {
     static String LOG_FILE; //静态变量  类型为String  用于存储日志文件  所有示例共享同一个值
 
-    static boolean LOG_WARN = true; //静态变量  类型为boolean  用于指示是否记录警告信息  所有示例共享同一个值
+    public static boolean LOG_WARN = true; //静态变量  类型为boolean  用于指示是否记录警告信息  所有示例共享同一个值
 
     private Logger logger = LoggerFactory.getLogger(this.getClass()); //实例变量  类型为Logger  用于记录日志  每个示例都有自己的值
 
@@ -64,7 +62,7 @@ public abstract class DataDictTool {
                     "authReaderFlag", "authEditorFlag");
     private static List<String> MORE_HIDDEN_FIELDS = Arrays
             .asList("fdModelName", "fdModelId", "fdKey");
-    private static Map<String, String> MESSAGE_KEYS = new HashMap<String, String>();
+    public static Map<String, String> MESSAGE_KEYS = new HashMap<String, String>();
 
     static {
         MESSAGE_KEYS.put("docCreator", "sys-doc:sysDocBaseInfo.docCreator");
@@ -235,7 +233,7 @@ public abstract class DataDictTool {
 
         FixContext ctx = new FixContext(file, modelName, logFix);
 //修复model 数据
-        fixMessage(ctx, global, null);
+        ctx.fixMessage(global, null, this);
         fixModelHbmAttr(ctx, global);
         fixModelOtherAttr(ctx, global);
 /**
@@ -295,7 +293,7 @@ public abstract class DataDictTool {
             for (Object key: attachments.keySet()){
                 JSONObject jsonProperty = attachments.getJSONObject(key.toString());
                 replaceFix(ctx, jsonProperty, "propertyType", XmlJsonDictType.ATTACHMENT.getJsonName(),key.toString());
-                fixMessage(ctx, global, key.toString());
+                ctx.fixMessage(global, key.toString(), this);
             }
         }
 
@@ -305,7 +303,7 @@ public abstract class DataDictTool {
                 String propertyType = jsonProperty.optString("propertyType");
                 if(XmlJsonDictType.ATTACHMENT.getJsonName().equals(propertyType)){
 //                    附件修复
-                    fixMessage(ctx, jsonProperty, property);
+                    ctx.fixMessage(jsonProperty, property, this);
                     attachments.put(property, jsonProperty);
                     attrs.remove(property);
                     ctx.setModify(true);
@@ -313,14 +311,14 @@ public abstract class DataDictTool {
                 }
                 if(XmlJsonDictType.COMPLEX.getJsonName().equals(propertyType)){
 //                    复合属性
-                    fixMessage(ctx, jsonProperty, property);
+                    ctx.fixMessage(jsonProperty, property, this);
                     fixPropertyType(ctx, jsonProperty, propertyType, null);
                     continue;
                 }
                 if(ctx.getHbm() == null || ctx.getHbm().getId() == null){
 //                    无HBM
-                    if(checkField(ctx.clazz, property) >= 0){
-                        fixMessage(ctx, jsonProperty, property);
+                    if(ClassUtils.checkField(ctx.clazz, property) >= 0){
+                        ctx.fixMessage(jsonProperty, property, this);
                         fixPropertyType(ctx, jsonProperty, propertyType, null);
                         continue;
                     }
@@ -340,73 +338,7 @@ public abstract class DataDictTool {
         return ctx.isModify();
     }
 
-    /** 修复messageKey */
-    private void fixMessage(FixContext ctx, JSONObject json, String fieldName) {
-        String oldKey = json.optString("messageKey");
-        if(StringUtil.isNotNull(oldKey)){  //包含是否为null 和空字符串的情况
-            int index = oldKey.indexOf(":");  //获取格式"sys-doc:sysDocBaseInfo.docSubject"
-            String bundle = "ApplicationResources";
-            String key = oldKey;
-            if(index > -1){
-                bundle = "com.landray.kmss." + oldKey.substring(0,index).replace("-", ".").trim() + ".ApplicationResources"; // com.landray.kmss.sys.doc
-                key = oldKey.substring(index +1).trim(); // sysDocBaseInfo.docSubject
-            }
-            try {
-                /**
-                 * 获取对应资源文件 ApplicationResources.properties 中的值  查找是否存在key
-                 */
-                if(ResourceBundle.getBundle(bundle).containsKey(key)){
-                    fixCanDisplay(ctx, json, fieldName, false);
-                    return;
-                }
-            }catch (MissingResourceException e){
-                ctx.log("错误：无法找到资源文件：" + bundle);
-            }
-        }
-
-//        语言包
-        if(ctx.getResource() != null){
-            if(fieldName == null){
-                String newKey = "table." + ctx.getSimpleName();
-                if(ctx.getResource().containsKey(newKey)){
-                    newKey = ctx.getBundle() + ":" + newKey;
-                    json.put("messageKey", newKey);
-                    ctx.logFix("model.messageKey", oldKey, newKey);
-                    return;
-                }
-            } else {
-                String newKey = ctx.getSimpleName() + "." + fieldName;
-                if(ctx.getResource().containsKey(newKey)){
-                    newKey = ctx.getBundle() + ":" + newKey;
-                }else if(ctx.getResource().containsKey(newKey + "Id")){
-                    newKey = ctx.getBundle() + ":" + newKey + "Id";
-                }else if(ctx.getResource().containsKey(newKey + "Name")){
-                    newKey = ctx.getBundle() + ":" + newKey + "Name";
-                }else{
-                    newKey = MESSAGE_KEYS.get(fieldName);
-                }
-                if(newKey != null){
-                    json.put("messageKey", newKey);
-                    ctx.logFix(fieldName + ".messageKey", oldKey, newKey);
-                    fixCanDisplay(ctx, json, fieldName, false);
-                    return;
-                }
-            }
-        }
-        fixCanDisplay(ctx, json, fieldName, true);
-//        读取不了打印错误
-        if(StringUtil.isNull(oldKey)){
-            if( LOG_WARN && fieldName == null){
-                ctx.log("警告：messageKey为空");
-            } else if(LOG_WARN && !"fdId".equals(fieldName) && !"false".equals(json.optString("canDisplay"))){
-                ctx.log("警告：" + fieldName + ".messageKey为空");
-            }
-        } else{
-            ctx.log("错误：" + (fieldName == null ? "model":fieldName) + ".messageKey" + oldKey);
-        }
-    }
-
-    private void fixCanDisplay(FixContext ctx, JSONObject json, String fieldName, boolean checkMore) {
+    public void fixCanDisplay(FixContext ctx, JSONObject json, String fieldName, boolean checkMore) {
         String propertyType = json.optString("propertyType");
         if(fieldName == null || StringUtil.isNotNull(json.optString("canDisplay")) || XmlJsonDictType.ATTACHMENT.getJsonName().equals(propertyType)){
             return;
@@ -430,7 +362,7 @@ public abstract class DataDictTool {
 
         String formName = StringUtil.replace(ctx.clazz.getName(), ".model.", ".form.") + "Form";
         Class<?> formClazz = loadClass(formName);
-        if(checkField(formClazz, fieldName) == -1){
+        if(ClassUtils.checkField(formClazz, fieldName) == -1){
             defaultFix(ctx, json, "canDisplay", "false", fieldName);
         }
     }
@@ -471,9 +403,7 @@ public abstract class DataDictTool {
     private void defaultFix(FixContext ctx, JSONObject json, String canDisplay, String aFalse, String fieldName) {
     }
 
-    private int checkField(Class<?> clazz, String property) {
-        return 0;
-    }
+
 
     private void fixPropertyType(FixContext ctx, JSONObject json, String name, String type) {
         String oldVal = json.optString("type");
@@ -546,7 +476,7 @@ public abstract class DataDictTool {
 
                 switch (obj.getClass().getSimpleName()){
                     case "HbmId":
-                        fixHbmId(ctx, jsonProperty, (HbmId)obj);
+                        ctx.fixHbmId(jsonProperty, (HbmId)obj);
                         break;
                     case "HbmProperty":
                         fixHbmProperty(ctx, jsonProperty, (HbmProperty)obj);
@@ -578,9 +508,17 @@ public abstract class DataDictTool {
     }
 
     private void fixHbmProperty(FixContext ctx, JSONObject jsonProperty, HbmProperty obj) {
-    }
-
-    private void fixHbmId(FixContext ctx, JSONObject jsonProperty, NamingProperty obj) {
+        replaceFix(ctx, jsonProperty, "propertyType", XmlJsonDictType.SIMPLE.getJsonName(), obj.getName());
+        ctx.fixMessage(jsonProperty, obj.getName(), this);
+        fixPropertyType(ctx, jsonProperty, obj.getName(), obj.getType());
+        replaceFix(ctx, jsonProperty, "culumn", obj.getColumn(), obj.getName());
+        replaceFix(ctx, jsonProperty, "length", obj.getLength(), obj.getName());
+        if("true".equals(obj.getNotNull())){
+            replaceFix(ctx, jsonProperty, "notNull", "true", obj.getName());
+        }
+        if("true".equals(obj.getUnique())){
+            replaceFix(ctx, jsonProperty, "unique", "true", obj.getName());
+        }
     }
 
     private void fixModelOtherAttr(FixContext ctx, JSONObject json) {
@@ -593,7 +531,7 @@ public abstract class DataDictTool {
                      continue;
                  }
 
-                if(checkField(ctx.clazz, opt) >= 0){
+                if(ClassUtils.checkField(ctx.clazz, opt) >= 0){
                     displayPropery = opt;
                     break;
                 }

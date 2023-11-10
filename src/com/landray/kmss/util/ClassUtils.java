@@ -80,4 +80,26 @@ public class ClassUtils {
         }
     }
 
+    public static int checkField(Class<?> clazz, String property) {
+        if(clazz == null){
+            return 0;
+        }
+
+        String _field = Character.toUpperCase(property.charAt(0)) + property.substring(1);
+        try{
+            clazz.getMethod("get" + _field);
+            return 1;
+        }catch (Throwable e){
+
+        }
+
+        try {
+            clazz.getMethod("is" + _field);
+            return 1;
+        }catch (Throwable e){
+
+        }
+        return -1;
+    }
+
 }
