@@ -502,9 +502,24 @@ public abstract class DataDictTool {
     }
 
     private void fixHbmManyToOne(FixContext ctx, JSONObject jsonProperty, HbmManyToOne obj) {
+        replaceFix(ctx, jsonProperty, "propertyType", XmlJsonDictType.MODEL.getJsonName(), obj.getName());
+        ctx.fixMessage(jsonProperty, obj.getName(), this);
+        fixPropertyType(ctx, jsonProperty, obj.getName(), obj.getType());
+        replaceFix(ctx, jsonProperty, "culumn", obj.getColumn(), obj.getName());
+        replaceFix(ctx, jsonProperty, "notNull", "true", obj.getName());
+        replaceFix(ctx, jsonProperty, "unique", "true", obj.getName());
+        replaceFix(ctx, jsonProperty, "cascade", obj.getCascade(), obj.getName());
     }
 
     private void fixHbmOneToOne(FixContext ctx, JSONObject jsonProperty, HbmOneToOne obj) {
+        replaceFix(ctx, jsonProperty, "propertyType", XmlJsonDictType.COMPLEX.getJsonName(), obj.getName());
+        ctx.fixMessage(jsonProperty, obj.getName(), this);
+        fixPropertyType(ctx, jsonProperty, obj.getName(), obj.getType());
+        replaceFix(ctx, jsonProperty, "culumn", "fdId", obj.getName());
+        replaceFix(ctx, jsonProperty, "notNull", "true", obj.getName());
+        replaceFix(ctx, jsonProperty, "unique", "true", obj.getName());
+        replaceFix(ctx, jsonProperty, "cascade", obj.getCascade(), obj.getName());
+        replaceFix(ctx, jsonProperty, "constrained", obj.getConstrained(), obj.getName());
     }
 
     private void fixHbmProperty(FixContext ctx, JSONObject jsonProperty, HbmProperty obj) {

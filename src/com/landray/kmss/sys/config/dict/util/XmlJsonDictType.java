@@ -8,7 +8,9 @@ import lombok.Setter;
 public enum XmlJsonDictType {
     SIMPLE("simpleProperty", "simple"),
     ATTACHMENT("attachmentProperty", "att"),
-    COMPLEX("complexProperty", "complex" );
+    COMPLEX("complexProperty", "complex" ),
+
+    MODEL("modelProperty", "model");
 
     private String name;
     private String jsonName;
