@@ -482,7 +482,7 @@ public abstract class DataDictTool {
         ctx.fixMessage(jsonProperty, obj.getName(), this);
         if(obj.getOneToMany() != null){
             ctx.fixPropertyType(jsonProperty, obj.getName(), obj.getOneToMany().getType(), this);
-            ctx.replaceFix(jsonProperty, "culumn", obj.getKey().getColumn(), obj.getName());
+            ctx.replaceFix(jsonProperty, "column", obj.getKey().getColumn(), obj.getName());
             if(StringUtil.isNull(table)){
                 HbmClass clz = hbmClasses.get(obj.getOneToMany().getType());
                 if(clz != null){
@@ -494,7 +494,7 @@ public abstract class DataDictTool {
                 ctx.fixPropertyType(jsonProperty, obj.getName(), obj.getManyToMany().getType(), this);
                 ctx.replaceFix(jsonProperty, "elementColumn", obj.getManyToMany().getColumn(), obj.getName());
             }
-            ctx.replaceFix(jsonProperty, "culumn", obj.getManyToMany().getColumn(), obj.getName());
+            ctx.replaceFix(jsonProperty, "column", obj.getManyToMany().getColumn(), obj.getName());
             if(obj instanceof HbmList && ((HbmList) obj).getIndex() != null){
                 ctx.replaceFix(jsonProperty, "indexColumn", ((HbmList) obj).getIndex().getColumn(), obj.getName());
             }
@@ -505,7 +505,7 @@ public abstract class DataDictTool {
         if("true".equals(obj.getKey().getUnique())){
             ctx.replaceFix(jsonProperty, "unique", "true", obj.getName());
         }
-        ctx.replaceFix(jsonProperty, "orderyBy", obj.getOrderBy(), obj.getName());
+        ctx.replaceFix(jsonProperty, "orderBy", obj.getOrderBy(), obj.getName());
         ctx.replaceFix(jsonProperty, "table", obj.getTable(), obj.getName());
         ctx.replaceFix(jsonProperty, "cascade", obj.getCascade(), obj.getName());
         ctx.replaceFix(jsonProperty, "inverse", obj.getInverse(), obj.getName());
@@ -515,7 +515,7 @@ public abstract class DataDictTool {
         ctx.replaceFix(jsonProperty, "propertyType", XmlJsonDictType.SIMPLE.getJsonName(), obj.getName());
         ctx.fixMessage(jsonProperty, obj.getName(), this);
         ctx.fixPropertyType(jsonProperty, obj.getName(), obj.getType(), this);
-        ctx.replaceFix(jsonProperty, "culumn", obj.getColumn(), obj.getName());
+        ctx.replaceFix(jsonProperty, "column", obj.getColumn(), obj.getName());
         ctx.replaceFix(jsonProperty, "length", obj.getLength(), obj.getName());
         if("true".equals(obj.getNotNull())){
             ctx.replaceFix(jsonProperty, "notNull", "true", obj.getName());

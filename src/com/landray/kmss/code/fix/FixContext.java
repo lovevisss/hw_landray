@@ -175,7 +175,7 @@ public class FixContext {
         replaceFix(jsonProperty, "propertyType", XmlJsonDictType.COMPLEX.getJsonName(), obj.getName());
         fixMessage(jsonProperty, obj.getName(), dataDictTool);
         fixPropertyType(jsonProperty, obj.getName(), obj.getType(), dataDictTool);
-        replaceFix(jsonProperty, "culumn", "fdId", obj.getName());
+        replaceFix(jsonProperty, "column", "fdId", obj.getName());
         replaceFix(jsonProperty, "notNull", "true", obj.getName());
         replaceFix(jsonProperty, "unique", "true", obj.getName());
         replaceFix(jsonProperty, "cascade", obj.getCascade(), obj.getName());
@@ -186,7 +186,7 @@ public class FixContext {
         replaceFix(jsonProperty, "propertyType", XmlJsonDictType.MODEL.getJsonName(), obj.getName());
         fixMessage(jsonProperty, obj.getName(), dataDictTool);
         fixPropertyType(jsonProperty, obj.getName(), obj.getType(), dataDictTool);
-        replaceFix(jsonProperty, "culumn", obj.getColumn(), obj.getName());
+        replaceFix(jsonProperty, "column", obj.getColumn(), obj.getName());
         replaceFix(jsonProperty, "notNull", "true", obj.getName());
         replaceFix(jsonProperty, "unique", "true", obj.getName());
         replaceFix(jsonProperty, "cascade", obj.getCascade(), obj.getName());
