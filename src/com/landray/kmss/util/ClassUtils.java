@@ -70,6 +70,8 @@ public class ClassUtils {
                 return null;
             }
         }
+//        优先缓存 再forName
+        Class<?> classFromcache = commonClassCache.get(clazzFullName);
 
         return null;
     }

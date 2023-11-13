@@ -5,7 +5,6 @@ import com.landray.kmss.code.hbm.*;
 import com.landray.kmss.code.spring.SpringBean;
 import com.landray.kmss.code.spring.SpringBeans;
 import com.landray.kmss.util.ClassUtils;
-import com.landray.kmss.util.ObjectUtil;
 import com.landray.kmss.util.StringUtil;
 import com.landray.kmss.code.util.XMLReaderUtil;
 import com.landray.kmss.sys.config.dict.util.XmlJsonDictType;
@@ -15,7 +14,6 @@ import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.beans.PropertyDescriptor;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
@@ -292,7 +290,7 @@ public abstract class DataDictTool {
              */
             for (Object key: attachments.keySet()){
                 JSONObject jsonProperty = attachments.getJSONObject(key.toString());
-                replaceFix(ctx, jsonProperty, "propertyType", XmlJsonDictType.ATTACHMENT.getJsonName(),key.toString());
+                ctx.replaceFix(jsonProperty, "propertyType", XmlJsonDictType.ATTACHMENT.getJsonName(),key.toString());
                 ctx.fixMessage(global, key.toString(), this);
             }
         }
@@ -312,14 +310,14 @@ public abstract class DataDictTool {
                 if(XmlJsonDictType.COMPLEX.getJsonName().equals(propertyType)){
 //                    复合属性
                     ctx.fixMessage(jsonProperty, property, this);
-                    fixPropertyType(ctx, jsonProperty, propertyType, null);
+                    ctx.fixPropertyType(jsonProperty, propertyType, null, this);
                     continue;
                 }
                 if(ctx.getHbm() == null || ctx.getHbm().getId() == null){
 //                    无HBM
                     if(ClassUtils.checkField(ctx.clazz, property) >= 0){
                         ctx.fixMessage(jsonProperty, property, this);
-                        fixPropertyType(ctx, jsonProperty, propertyType, null);
+                        ctx.fixPropertyType(jsonProperty, propertyType, null, this);
                         continue;
                     }
                 }
@@ -386,13 +384,13 @@ public abstract class DataDictTool {
                 }
             }
 
-            replaceFix(ctx, global, "table", table, "model");
+            ctx.replaceFix(global, "table", table, "model");
             defaultFix(ctx, global, "etendClass", hbm.getExtendClass(), "model");
-            replaceFix(ctx, global, "discriminatorValue", hbm.getDiscriminatorValue(), "model");
+            ctx.replaceFix(global, "discriminatorValue", hbm.getDiscriminatorValue(), "model");
 
         }else{
-            replaceFix(ctx, global, "table", ctx.getHbm().getTable(), "model");
-            replaceFix(ctx, global, "discriminatorValue", null, "model");
+            ctx.replaceFix(global, "table", ctx.getHbm().getTable(), "model");
+            ctx.replaceFix(global, "discriminatorValue", null, "model");
         }
     }
 
@@ -403,24 +401,7 @@ public abstract class DataDictTool {
     private void defaultFix(FixContext ctx, JSONObject json, String canDisplay, String aFalse, String fieldName) {
     }
 
-
-
-    private void fixPropertyType(FixContext ctx, JSONObject json, String name, String type) {
-        String oldVal = json.optString("type");
-        String newVal = getPropertyType(type);
-        if(newVal == null && ctx.getClazz() != null){
-            PropertyDescriptor descriptor = ObjectUtil.getPropertyDescriptor(ctx.getClazz(), name);
-            if(descriptor != null){
-                newVal = getPropertyType(descriptor.getPropertyType().getName());
-            }
-        }
-        if(newVal == null || "DateTime".equals(newVal) && "Date".equals(oldVal) || "Time".equals(oldVal) ){
-            return;
-        }
-        replaceFix(ctx, json, "type", newVal, name);
-    }
-
-    private String getPropertyType(String type) {
+    public String getPropertyType(String type) {
         if(StringUtil.isNull(type)){
             return null;
         }
@@ -437,9 +418,6 @@ public abstract class DataDictTool {
             shortType = type.substring(i + 1).toLowerCase();
         }
         return TYPES.get(shortType);
-    }
-
-    private void replaceFix(FixContext ctx, JSONObject jsonProperty, String propertyType, String jsonName, String string) {
     }
 
     private void fixHbmClass(FixContext ctx, JSONObject attrs, JSONObject baseAtts, HbmClass hbm, List<String> properties, boolean addProperty) {
@@ -482,10 +460,10 @@ public abstract class DataDictTool {
                         fixHbmProperty(ctx, jsonProperty, (HbmProperty)obj);
                         break;
                     case "HbmOneToOne":
-                        fixHbmOneToOne(ctx, jsonProperty, (HbmOneToOne)obj);
+                        ctx.fixHbmOneToOne(jsonProperty, (HbmOneToOne)obj, this);
                         break;
                     case "HbmManyToOne":
-                        fixHbmManyToOne(ctx, jsonProperty, (HbmManyToOne)obj);
+                        ctx.fixHbmManyToOne(jsonProperty, (HbmManyToOne)obj, this);
                         break;
                     case "HbmBag":
                         fixHbmBag(ctx, jsonProperty, (HbmBag)obj);
@@ -499,40 +477,51 @@ public abstract class DataDictTool {
     }
 
     private void fixHbmBag(FixContext ctx, JSONObject jsonProperty, HbmBag obj) {
-    }
-
-    private void fixHbmManyToOne(FixContext ctx, JSONObject jsonProperty, HbmManyToOne obj) {
-        replaceFix(ctx, jsonProperty, "propertyType", XmlJsonDictType.MODEL.getJsonName(), obj.getName());
+        String table = obj.getTable();
+        ctx.replaceFix(jsonProperty, "propertyType", XmlJsonDictType.LIST.getJsonName(), obj.getName());
         ctx.fixMessage(jsonProperty, obj.getName(), this);
-        fixPropertyType(ctx, jsonProperty, obj.getName(), obj.getType());
-        replaceFix(ctx, jsonProperty, "culumn", obj.getColumn(), obj.getName());
-        replaceFix(ctx, jsonProperty, "notNull", "true", obj.getName());
-        replaceFix(ctx, jsonProperty, "unique", "true", obj.getName());
-        replaceFix(ctx, jsonProperty, "cascade", obj.getCascade(), obj.getName());
-    }
-
-    private void fixHbmOneToOne(FixContext ctx, JSONObject jsonProperty, HbmOneToOne obj) {
-        replaceFix(ctx, jsonProperty, "propertyType", XmlJsonDictType.COMPLEX.getJsonName(), obj.getName());
-        ctx.fixMessage(jsonProperty, obj.getName(), this);
-        fixPropertyType(ctx, jsonProperty, obj.getName(), obj.getType());
-        replaceFix(ctx, jsonProperty, "culumn", "fdId", obj.getName());
-        replaceFix(ctx, jsonProperty, "notNull", "true", obj.getName());
-        replaceFix(ctx, jsonProperty, "unique", "true", obj.getName());
-        replaceFix(ctx, jsonProperty, "cascade", obj.getCascade(), obj.getName());
-        replaceFix(ctx, jsonProperty, "constrained", obj.getConstrained(), obj.getName());
+        if(obj.getOneToMany() != null){
+            ctx.fixPropertyType(jsonProperty, obj.getName(), obj.getOneToMany().getType(), this);
+            ctx.replaceFix(jsonProperty, "culumn", obj.getKey().getColumn(), obj.getName());
+            if(StringUtil.isNull(table)){
+                HbmClass clz = hbmClasses.get(obj.getOneToMany().getType());
+                if(clz != null){
+                    table = clz.getTable();
+                }
+            }
+        }else{
+            if(obj.getManyToMany() != null){
+                ctx.fixPropertyType(jsonProperty, obj.getName(), obj.getManyToMany().getType(), this);
+                ctx.replaceFix(jsonProperty, "elementColumn", obj.getManyToMany().getColumn(), obj.getName());
+            }
+            ctx.replaceFix(jsonProperty, "culumn", obj.getManyToMany().getColumn(), obj.getName());
+            if(obj instanceof HbmList && ((HbmList) obj).getIndex() != null){
+                ctx.replaceFix(jsonProperty, "indexColumn", ((HbmList) obj).getIndex().getColumn(), obj.getName());
+            }
+        }
+        if("true".equals(obj.getKey().getNotNull())){
+            ctx.replaceFix(jsonProperty, "notNull", "true", obj.getName());
+        }
+        if("true".equals(obj.getKey().getUnique())){
+            ctx.replaceFix(jsonProperty, "unique", "true", obj.getName());
+        }
+        ctx.replaceFix(jsonProperty, "orderyBy", obj.getOrderBy(), obj.getName());
+        ctx.replaceFix(jsonProperty, "table", obj.getTable(), obj.getName());
+        ctx.replaceFix(jsonProperty, "cascade", obj.getCascade(), obj.getName());
+        ctx.replaceFix(jsonProperty, "inverse", obj.getInverse(), obj.getName());
     }
 
     private void fixHbmProperty(FixContext ctx, JSONObject jsonProperty, HbmProperty obj) {
-        replaceFix(ctx, jsonProperty, "propertyType", XmlJsonDictType.SIMPLE.getJsonName(), obj.getName());
+        ctx.replaceFix(jsonProperty, "propertyType", XmlJsonDictType.SIMPLE.getJsonName(), obj.getName());
         ctx.fixMessage(jsonProperty, obj.getName(), this);
-        fixPropertyType(ctx, jsonProperty, obj.getName(), obj.getType());
-        replaceFix(ctx, jsonProperty, "culumn", obj.getColumn(), obj.getName());
-        replaceFix(ctx, jsonProperty, "length", obj.getLength(), obj.getName());
+        ctx.fixPropertyType(jsonProperty, obj.getName(), obj.getType(), this);
+        ctx.replaceFix(jsonProperty, "culumn", obj.getColumn(), obj.getName());
+        ctx.replaceFix(jsonProperty, "length", obj.getLength(), obj.getName());
         if("true".equals(obj.getNotNull())){
-            replaceFix(ctx, jsonProperty, "notNull", "true", obj.getName());
+            ctx.replaceFix(jsonProperty, "notNull", "true", obj.getName());
         }
         if("true".equals(obj.getUnique())){
-            replaceFix(ctx, jsonProperty, "unique", "true", obj.getName());
+            ctx.replaceFix(jsonProperty, "unique", "true", obj.getName());
         }
     }
 
@@ -552,7 +541,7 @@ public abstract class DataDictTool {
                 }
 
             }
-            replaceFix(ctx, json, "displayProperty", displayPropery, "model");
+            ctx.replaceFix(json, "displayProperty", displayPropery, "model");
         }
 //        修复serviceBean
         String bean = json.optString("serviceBean");
@@ -563,7 +552,7 @@ public abstract class DataDictTool {
             }
         }
 
-        replaceFix(ctx, json, "serviceBean", bean, "model");
+        ctx.replaceFix(json, "serviceBean", bean, "model");
 //        修复URL
         String url = json.optString("url");
         if(ctx.getBundle() != null && StringUtil.isNull(url)){

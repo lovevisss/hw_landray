@@ -3,10 +3,15 @@ package com.landray.kmss.code.fix;
 import com.landray.kmss.code.dict.DataDictTool;
 import com.landray.kmss.code.hbm.HbmClass;
 import com.landray.kmss.code.hbm.HbmId;
+import com.landray.kmss.code.hbm.HbmManyToOne;
+import com.landray.kmss.code.hbm.HbmOneToOne;
+import com.landray.kmss.sys.config.dict.util.XmlJsonDictType;
+import com.landray.kmss.util.ObjectUtil;
 import com.landray.kmss.util.StringUtil;
 import lombok.Data;
 import net.sf.json.JSONObject;
 
+import java.beans.PropertyDescriptor;
 import java.io.File;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
@@ -45,7 +50,13 @@ public class FixContext {
     public void log(String s) {
     }
 
-    public void logFix(String s, String oldKey, String newKey) {
+    public void logFix(String obj, String oldKey, String newKey) {
+        modify = true;
+        if(!logFix){
+            return;
+        }
+        String message = "修复" + obj + "：" + oldKey + " -> " + newKey;
+        log(message);
     }
 
     /**
@@ -130,5 +141,54 @@ public class FixContext {
         jsonProperty.clear();
         jsonProperty.putAll(JSONObject.fromObject(value));
         logFix("fdId", oldValue, value);
+    }
+
+    public void replaceFix(JSONObject jsonProperty, String key, String value, String string) {
+        String oldVal = jsonProperty.optString(key, null);
+        if(StringUtil.isNull(oldVal)){
+            oldVal = null;
+        }
+        if(ObjectUtil.equals(oldVal, value)){
+            return;
+        }
+        jsonProperty.put(key, value);
+        logFix(string + "." +key, oldVal, value);
+
+    }
+
+    public void fixPropertyType(JSONObject json, String name, String type, DataDictTool dataDictTool) {
+        String oldVal = json.optString("type");
+        String newVal = dataDictTool.getPropertyType(type);
+        if(newVal == null && getClazz() != null){
+            PropertyDescriptor descriptor = ObjectUtil.getPropertyDescriptor(getClazz(), name);
+            if(descriptor != null){
+                newVal = dataDictTool.getPropertyType(descriptor.getPropertyType().getName());
+            }
+        }
+        if(newVal == null || "DateTime".equals(newVal) && "Date".equals(oldVal) || "Time".equals(oldVal) ){
+            return;
+        }
+        replaceFix(json, "type", newVal, name);
+    }
+
+    public void fixHbmOneToOne(JSONObject jsonProperty, HbmOneToOne obj, DataDictTool dataDictTool) {
+        replaceFix(jsonProperty, "propertyType", XmlJsonDictType.COMPLEX.getJsonName(), obj.getName());
+        fixMessage(jsonProperty, obj.getName(), dataDictTool);
+        fixPropertyType(jsonProperty, obj.getName(), obj.getType(), dataDictTool);
+        replaceFix(jsonProperty, "culumn", "fdId", obj.getName());
+        replaceFix(jsonProperty, "notNull", "true", obj.getName());
+        replaceFix(jsonProperty, "unique", "true", obj.getName());
+        replaceFix(jsonProperty, "cascade", obj.getCascade(), obj.getName());
+        replaceFix(jsonProperty, "constrained", obj.getConstrained(), obj.getName());
+    }
+
+    public void fixHbmManyToOne(JSONObject jsonProperty, HbmManyToOne obj, DataDictTool dataDictTool) {
+        replaceFix(jsonProperty, "propertyType", XmlJsonDictType.MODEL.getJsonName(), obj.getName());
+        fixMessage(jsonProperty, obj.getName(), dataDictTool);
+        fixPropertyType(jsonProperty, obj.getName(), obj.getType(), dataDictTool);
+        replaceFix(jsonProperty, "culumn", obj.getColumn(), obj.getName());
+        replaceFix(jsonProperty, "notNull", "true", obj.getName());
+        replaceFix(jsonProperty, "unique", "true", obj.getName());
+        replaceFix(jsonProperty, "cascade", obj.getCascade(), obj.getName());
     }
 }

@@ -10,7 +10,8 @@ public enum XmlJsonDictType {
     ATTACHMENT("attachmentProperty", "att"),
     COMPLEX("complexProperty", "complex" ),
 
-    MODEL("modelProperty", "model");
+    MODEL("modelProperty", "model"),
+    LIST("listProperty", "list");
 
     private String name;
     private String jsonName;

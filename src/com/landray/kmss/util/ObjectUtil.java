@@ -37,4 +37,29 @@ public class ObjectUtil {
         }
         return null;
     }
+
+    /**
+     * 比较两个对象是否相等
+     * objects里面有相同的方法 其实不需要这个方法
+     *
+     * @param obj1
+     * @param obj2
+     * @return
+     */
+    public static boolean equals(Object obj1, Object obj2) {
+        return equals(obj1, obj2, true);
+    }
+
+    private static boolean equals(Object obj1, Object obj2, boolean bothNullReturn) {
+        if (obj1 == null && obj2 == null) {
+            return bothNullReturn;
+        }
+        if (obj1 == obj2) {
+            return true;
+        }
+        if (obj1 == null || obj2 == null) {
+            return false;
+        }
+        return obj1.equals(obj2);
+    }
 }
